@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List
+from typing import Dict
 
 import telegram
 from PIL import Image
@@ -22,9 +22,8 @@ class Bot(object):
         ("frame", "/frame <text>",
          "Provide text or reply to a message. Text will be put on random stock image with random font.")
     ]
-    CUSTOM_COMMANDS = list()
 
-    def __init__(self, bot_name: str, token: str, retriever: Retriever, custom_commands: List[str]):
+    def __init__(self, bot_name: str, token: str, retriever: Retriever, custom_commands: Dict[str, str]):
         """
         :param token: The token to run the bot on.
         :param retriever: The random data retriever.
@@ -38,10 +37,7 @@ class Bot(object):
         self._updater.dispatcher.add_handler(CommandHandler("help", self._help_callback))
         self._updater.dispatcher.add_handler(CommandHandler("frame", self._frame_callback))
 
-        for item in custom_commands:
-            # "command_SPACE_text"
-            command = item.split(' ')[0]
-            text = item[len(command)::]
+        for command, text in custom_commands.items():
             self._updater.dispatcher.add_handler(CommandHandler(
                 # Set custom callback.
                 command, lambda up, co, c=command, t=text: self._custom_callback(c, t, up, co)
@@ -56,9 +52,7 @@ class Bot(object):
 
         # Custom command list.
         self._help_message += f"\n*Custom Commands*\n"
-        for item in custom_commands:
-            command = item.split(' ')[0]
-            text = item[len(command)::]
+        for command, text in custom_commands.items():
             self._help_message += f"\n/{command} : \"{text}\"\n"
 
         logging.info(f"{self._bot_name} created.")
