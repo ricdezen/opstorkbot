@@ -1,3 +1,4 @@
+import os
 import telegram
 import logging
 from telegram.ext import Updater, CommandHandler
@@ -94,17 +95,21 @@ class Bot(object):
         :param text: The text the image should contain.
         """
         user = update.effective_chat.id
+        logging.info(f"Will try to generate image for user {user}.")
 
         image_file, author, profile = self._retriever.random_image()
         image = Image.open(image_file)
+        # Resize to avoid breaching Telegram size limit.
+        if min(image.size) > 2160:
+            image = image_utils.min_resize(image, 2160)
         result = image_utils.write(
             image,
             text,
             self._retriever.random_font(),
             10.0
         )
-        # TODO see if it makes sense to overwrite file.
         result.save(image_file)
+        logging.info(f"Generated image {image_file} {os.path.getsize(image_file)} for user {user}.")
 
         # Send back image with attribution caption.
         with open(image_file, 'rb') as f:
@@ -112,6 +117,8 @@ class Bot(object):
                 chat_id=user, photo=f, parse_mode="markdown",
                 caption=utils.markdown_attribution(self._bot_name, author, profile)
             )
+
+        logging.info(f"Sent image to user {user}.")
 
     def __del__(self):
         # Stop za bot.
