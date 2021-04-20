@@ -1,0 +1,11 @@
+# IDE stuff
+.idea/
+
+# Config and storage file
+config.json
+storage
+
+# Any test images
+*.jpg
+*.jpeg
+*.png
