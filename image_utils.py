@@ -1,5 +1,5 @@
 from typing import Union
-from text import get_text_dimensions
+from text_utils import get_text_dimensions
 from PIL import Image, ImageDraw, ImageFont, ImageStat
 
 
