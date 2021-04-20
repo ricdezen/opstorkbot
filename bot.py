@@ -1,16 +1,21 @@
-import os
-import telegram
 import logging
-from telegram.ext import Updater, CommandHandler
-from typing import Callable, List
+import os
+from typing import List
+
+import telegram
 from PIL import Image
+from telegram.ext import Updater, CommandHandler
 
 import image_utils
+import text_utils
 import utils
 from random_data import Retriever
 
 
 class Bot(object):
+    MAX_LINE_LENGTH = 40
+    MAX_IMAGE_SHORTEST_SIZE = 2160
+
     START_MESSAGE = "Hello, I am a bot, nice to meet you. You may use /help to read what my commands do."
     # Each command is a tuple: (name, usage, explanation).
     COMMANDS = [
@@ -31,8 +36,7 @@ class Bot(object):
         self._updater = Updater(token=token, use_context=True)
         self._updater.dispatcher.add_handler(CommandHandler("start", self._start_callback))
         self._updater.dispatcher.add_handler(CommandHandler("help", self._help_callback))
-        # TODO frame command.
-        # self._updater.dispatcher.add_handler(CommandHandler("frame", self._frame_callback))
+        self._updater.dispatcher.add_handler(CommandHandler("frame", self._frame_callback))
 
         for item in custom_commands:
             # "command_SPACE_text"
@@ -43,8 +47,19 @@ class Bot(object):
                 command, lambda up, co, c=command, t=text: self._custom_callback(c, t, up, co)
             ))
 
-        # TODO make help message.
-        self._help_message = "This is supposed to be the help message. But I have not set it up yet. Buzz off."
+        # Build help message.
+        self._help_message = f"*{self._bot_name}*\n"
+
+        # Default list.
+        for _, usage, explanation in Bot.COMMANDS:
+            self._help_message += f"\n{usage}\n{explanation}\n"
+
+        # Custom command list.
+        self._help_message += f"\n*Custom Commands*\n"
+        for item in custom_commands:
+            command = item.split(' ')[0]
+            text = item[len(command)::]
+            self._help_message += f"\n/{command} : \"{text}\"\n"
 
         logging.info(f"{self._bot_name} created.")
 
@@ -70,6 +85,36 @@ class Bot(object):
         user = update.effective_chat.id
         context.bot.send_message(chat_id=user, text=self._help_message, parse_mode="markdown")
         logging.info(f"Sent help to user: {user}.")
+
+    def _frame_callback(self, update: telegram.Update, context: telegram.ext.CallbackContext):
+        """
+        Callback for frame command. Take either text or the message that was replied to and send back image.
+        """
+        user = update.effective_chat.id
+
+        # Text is everything except first word.
+        text = update.message.text[len(update.message.text.split(' ')[0])::]
+        text = text_utils.split_text(text, Bot.MAX_LINE_LENGTH)
+
+        if text:
+            # Got text, send image.
+            logging.info(f"Got /frame from {user} with text \"{text}\".")
+            self._send_image(text, update, context)
+        else:
+            reply = update.message.reply_to_message
+            if reply is None:
+                # No text and message was not a reply. Bye bye.
+                logging.info(f"Got /frame from {user} with no text or reply.")
+                update.message.reply_text("Hey man, I'd like to help you but you gave me nothing to work on.")
+            else:
+                # Message was a reply.
+                text = update.message.reply_to_message.text
+                if text is None:
+                    # Empty text -> either message was empty or the bot is set in privacy mode. Check BotFather.
+                    logging.info(f"Sorry bruv, the message may be empty or my privacy mode might be enabled idk.")
+                text = text_utils.split_text(text, Bot.MAX_LINE_LENGTH)
+                logging.info(f"Got /frame from {user} which replied to \"{text}\".")
+                self._send_image(text, update, context)
 
     def _custom_callback(
             self, command: str, text: str,
@@ -100,8 +145,8 @@ class Bot(object):
         image_file, author, profile = self._retriever.random_image()
         image = Image.open(image_file)
         # Resize to avoid breaching Telegram size limit.
-        if min(image.size) > 2160:
-            image = image_utils.min_resize(image, 2160)
+        if min(image.size) > Bot.MAX_IMAGE_SHORTEST_SIZE:
+            image = image_utils.min_resize(image, Bot.MAX_IMAGE_SHORTEST_SIZE)
         result = image_utils.write(
             image,
             text,
@@ -114,11 +159,11 @@ class Bot(object):
         # Send back image with attribution caption.
         with open(image_file, 'rb') as f:
             context.bot.send_photo(
-                chat_id=user, photo=f, parse_mode="markdown",
+                chat_id=user, photo=f, parse_mode="markdown", reply_to_message_id=update.message.message_id,
                 caption=utils.markdown_attribution(self._bot_name, author, profile)
             )
 
-        logging.info(f"Sent image to user {user}.")
+            logging.info(f"Sent image to user {user}.")
 
     def __del__(self):
         # Stop za bot.
