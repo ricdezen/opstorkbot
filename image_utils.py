@@ -1,3 +1,4 @@
+import os
 from typing import Union
 from text_utils import get_text_dimensions
 from PIL import Image, ImageDraw, ImageFont, ImageStat
@@ -57,15 +58,19 @@ def write(image: Image.Image, text: str, font_file: str, min_padding: Union[int,
 
     # Need to gradually increase font size to fit the sentence.
     ok_font = ImageFont.truetype(font_file)
-    for size in range(1, max(image.size)):
-        font = ImageFont.truetype(font_file, size=size)
-        text_width, text_height = get_text_dimensions(text, font)
-        if (width - text_width) < (2 * pad_h):
-            break
-        if (height - text_height) < (2 * pad_v):
-            break
-        # Font is ok at this size.
-        ok_font = font
+    ok_size = 1
+    # Reduce step to start off easy and slow down near limit.
+    for step in [100, 50, 25, 10, 5, 1]:
+        for size in range(ok_size, max(image.size), step):
+            font = ImageFont.truetype(font_file, size=size)
+            text_width, text_height = get_text_dimensions(text, font)
+            if (width - text_width) < (2 * pad_h):
+                break
+            if (height - text_height) < (2 * pad_v):
+                break
+            # Font is ok at this size.
+            ok_font = font
+            ok_size = size
 
     x = image.size[0] / 2
     y = image.size[1] / 2
