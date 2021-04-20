@@ -77,12 +77,12 @@ def write(image: Image.Image, text: str, font_file: str, min_padding: Union[int,
 
     # Border.
     black = (0, 0, 0)
-    draw.text((x - 1, y - 1), text, font=ok_font, align='center', anchor="mm", fill=black)
-    draw.text((x + 1, y - 1), text, font=ok_font, align='center', anchor="mm", fill=black)
-    draw.text((x - 1, y + 1), text, font=ok_font, align='center', anchor="mm", fill=black)
-    draw.text((x + 1, y + 1), text, font=ok_font, align='center', anchor="mm", fill=black)
+    white = (255, 255, 255)
 
     # Actual white text.
-    draw.text((x, y), text, font=ok_font, align='center', anchor="mm")
+    draw.text(
+        (x, y), text, font=ok_font, align='center', anchor="mm",
+        stroke_width=max(ok_size // 50, 1), fill=white, stroke_fill=black
+    )
 
     return image
