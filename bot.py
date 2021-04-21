@@ -152,7 +152,7 @@ class Bot(object):
                 continue
 
         result.save(image_file)
-        logging.info(f"Generated image {image_file} {os.path.getsize(image_file)} for user {user}.")
+        logging.info(f"Generated image {image_file} ({os.path.getsize(image_file)} bytes) for user {user}.")
 
         # Send back image with attribution caption.
         with open(image_file, 'rb') as f:
@@ -161,7 +161,85 @@ class Bot(object):
                 caption=utils.markdown_attribution(self._bot_name, author, profile)
             )
 
-            logging.info(f"Sent image to user {user}.")
+        logging.info(f"Sent image to user {user}.")
+
+    def __del__(self):
+        # Stop za bot.
+        self._updater.stop()
+
+
+class AdvancedBot(object):
+    MAX_LINE_LENGTH = 40
+    MAX_IMAGE_SHORTEST_SIZE = 2160
+
+    START_MESSAGE = "Hello, I am a bot, nice to meet you. You may use /help to read what my commands do."
+    # Each command is a tuple: (name, usage, explanation).
+    COMMANDS = [
+        ("frame", "/frame <text>",
+         "Provide text or reply to a message. Text will be put on random stock image with random font.")
+    ]
+
+    def __init__(self, bot_name: str, token: str, retriever: Retriever, custom_commands: Dict[str, str]):
+        """
+        :param token: The token to run the bot on.
+        :param retriever: The random data retriever.
+        :param custom_commands: List of strings in the form "command text".
+        """
+        from command import make_command
+        self._bot_name = bot_name
+        self._retriever = retriever
+
+        self._updater = Updater(token=token, use_context=True)
+        self._updater.dispatcher.add_handler(CommandHandler("start", self._start_callback))
+        self._updater.dispatcher.add_handler(CommandHandler("help", self._help_callback))
+        self._updater.dispatcher.add_handler(make_command(
+            self._bot_name, "frame", self._retriever
+        ))
+
+        """
+        for command, text in custom_commands.items():
+            self._updater.dispatcher.add_handler(CommandHandler(
+                # Set custom callback.
+                command, lambda up, co, c=command, t=text: self._custom_callback(c, t, up, co)
+            ))
+        """
+
+        # Build help message.
+        self._help_message = f"*{self._bot_name}*\n"
+
+        # Default list.
+        for _, usage, explanation in Bot.COMMANDS:
+            self._help_message += f"\n{usage}\n{explanation}\n"
+
+        # Custom command list.
+        self._help_message += f"\n*Custom Commands*\n"
+        for command, text in custom_commands.items():
+            self._help_message += f"\n/{command} : \"{text}\"\n"
+
+        logging.info(f"{self._bot_name} created.")
+
+    def start(self):
+        self._updater.start_polling()
+        logging.info(f"{self._bot_name} started.")
+
+    def idle(self):
+        self._updater.idle()
+
+    def _start_callback(self, update: telegram.Update, context: telegram.ext.CallbackContext):
+        """
+        Callback for start command. Just answer with a basic message.
+        """
+        user = update.effective_chat.id
+        context.bot.send_message(chat_id=user, text=self.START_MESSAGE)
+        logging.info(f"/start command received by user: {user}.")
+
+    def _help_callback(self, update: telegram.Update, context: telegram.ext.CallbackContext):
+        """
+        Callback for help command. Send help message.
+        """
+        user = update.effective_chat.id
+        context.bot.send_message(chat_id=user, text=self._help_message, parse_mode="markdown")
+        logging.info(f"Sent help to user: {user}.")
 
     def __del__(self):
         # Stop za bot.

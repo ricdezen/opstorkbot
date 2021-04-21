@@ -1,8 +1,11 @@
 import json
 import threading
+import mimetypes
 from pathlib import Path
 from typing import Dict, Union, Optional
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+
+mimetypes.init()
 
 _STORAGE_FILE: Optional[str] = None
 _STORAGE_LOCK = threading.Lock()
@@ -92,3 +95,20 @@ def markdown_attribution(app_name: str, author: str, profile_url: str) -> str:
     unsplash = "https://unsplash.com/"
     params = f"?utm_source={app_name}&utm_medium=referral"
     return f"Photo by [{author}]({profile_url}{params}) @ [Unsplash]({unsplash}{params})"
+
+
+def media_type(file: str) -> Optional[str]:
+    """
+    :param file: The media file.
+    :return: 'video' or 'image' if the file is supposed to be a video or image respectively. Returns None otherwise.
+    """
+    mime = mimetypes.guess_type(file)[0]
+
+    # Unknown or missing type.
+    if mime is None:
+        return None
+
+    mime = mime.split('/')[0]
+    if mime not in ["video", "image"]:
+        mime = None
+    return mime

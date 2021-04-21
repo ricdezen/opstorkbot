@@ -1,7 +1,7 @@
 import logging
 
 import utils
-from bot import Bot
+from bot import AdvancedBot
 from random_data import Retriever
 
 logging.basicConfig(
@@ -31,7 +31,7 @@ def main():
     del config
 
     r = Retriever(google_api_key, unsplash_api_key)
-    bot = Bot(bot_name, bot_token, r, custom_commands)
+    bot = AdvancedBot(bot_name, bot_token, r, custom_commands)
     bot.start()
     bot.idle()
 
