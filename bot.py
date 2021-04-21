@@ -141,12 +141,17 @@ class Bot(object):
         # Resize to avoid breaching Telegram size limit.
         if min(image.size) > Bot.MAX_IMAGE_SHORTEST_SIZE:
             image = image_utils.min_resize(image, Bot.MAX_IMAGE_SHORTEST_SIZE)
-        result = image_utils.write(
-            image,
-            text,
-            self._retriever.random_font(),
-            10.0
-        )
+
+        # Try multiple fonts in case you get a faulty one.
+        result = None
+        while True:
+            font = self._retriever.random_font()
+            try:
+                result = image_utils.write(image, text, font, 10.0)
+                break
+            except TypeError:
+                continue
+
         result.save(image_file)
         logging.info(f"Generated image {image_file} {os.path.getsize(image_file)} for user {user}.")
 

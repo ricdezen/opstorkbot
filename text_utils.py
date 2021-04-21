@@ -1,4 +1,15 @@
-def get_text_dimensions(text: str, font):
+from typing import Tuple
+
+
+def get_text_dimensions(text: str, font) -> Tuple[int, int]:
+    """
+    Compute the approximate text size for the given string and font.
+
+    :param text: String of text. Will be split over line breaks.
+    :param font: The font to use.
+    :return: Width and height of the text.
+    :raises TypeError: if the font has no bounding box (`font.getmask(text).getbbox()`).
+    """
     # https://stackoverflow.com/a/46220683/9263761
     ascent, descent = font.getmetrics()
 
