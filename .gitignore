@@ -9,3 +9,6 @@ storage
 *.jpg
 *.jpeg
 *.png
+
+# Bot media
+media/
