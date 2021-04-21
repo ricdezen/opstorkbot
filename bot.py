@@ -1,9 +1,8 @@
-import logging
 import os
-from typing import Dict
-
+import logging
 import telegram
 from PIL import Image
+from typing import Dict
 from telegram.ext import Updater, CommandHandler
 
 import image_utils
@@ -87,7 +86,7 @@ class Bot(object):
         user = update.effective_chat.id
 
         # Text is everything except first word.
-        text = update.message.text[len(update.message.text.split(' ')[0])::]
+        text = update.message.text[len(update.message.text.split(' ')[0])::].lstrip()
         text = text_utils.split_text(text, Bot.MAX_LINE_LENGTH)
 
         if text:

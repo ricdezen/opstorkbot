@@ -1,10 +1,12 @@
 import json
 import threading
-from typing import Dict, Union, Optional
 from pathlib import Path
+from typing import Dict, Union, Optional
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 _STORAGE_FILE: Optional[str] = None
 _STORAGE_LOCK = threading.Lock()
+_TEMPORARY_DIRECTORY = TemporaryDirectory()
 
 
 def set_storage(file: str):
@@ -50,6 +52,16 @@ def next_id() -> int:
 
     _STORAGE_LOCK.release()
     return next_value
+
+
+def get_temp_file(suffix: str = None) -> str:
+    """
+    :return: Returns the name for a new temporary file.
+    """
+    global _TEMPORARY_DIRECTORY
+    f = NamedTemporaryFile(suffix=suffix, dir=_TEMPORARY_DIRECTORY.name, delete=False)
+    f.close()
+    return f.name
 
 
 def get_config(file: Union[str, Path]) -> Dict:

@@ -1,9 +1,8 @@
-from tempfile import TemporaryDirectory, NamedTemporaryFile
+import random
+import requests
 from typing import Tuple
 
 import utils
-import requests
-import random
 
 
 class Retriever(object):
@@ -19,7 +18,6 @@ class Retriever(object):
         """
         self._google_api_key = google_api_key
         self._unsplash_api_key = unsplash_api_key
-        self._dir = TemporaryDirectory()
 
         # Caching font list to heavily limit api calls.
         self._font_list = None
@@ -41,7 +39,7 @@ class Retriever(object):
         if response.status_code != 200:
             raise RuntimeError(f"Could not retrieve font at {font[1]}")
 
-        filename = self._new_file()
+        filename = utils.get_temp_file()
         with open(filename, 'wb') as f:
             f.write(response.content)
 
@@ -66,7 +64,7 @@ class Retriever(object):
         download_link = requests.get(download_loc, url_params).json()["url"]
         response = requests.get(download_link, url_params)
 
-        filename = self._new_file(".jpg")
+        filename = utils.get_temp_file(".jpg")
         with open(filename, 'wb') as f:
             f.write(response.content)
 
@@ -83,11 +81,3 @@ class Retriever(object):
             {"key": self._google_api_key, "sort": "date"}
         )
         self._font_list = response.json()["items"]
-
-    def _new_file(self, suffix: str = None) -> str:
-        """
-        :return: Returns the name for a new temporary file.
-        """
-        f = NamedTemporaryFile(suffix=suffix, dir=self._dir.name, delete=False)
-        f.close()
-        return f.name
