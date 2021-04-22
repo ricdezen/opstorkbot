@@ -179,7 +179,7 @@ class AdvancedBot(object):
          "Provide text or reply to a message. Text will be put on random stock image with random font.")
     ]
 
-    def __init__(self, bot_name: str, token: str, retriever: Retriever, custom_commands: Dict[str, str]):
+    def __init__(self, bot_name: str, token: str, retriever: Retriever, custom_commands: Dict[str, Dict]):
         """
         :param token: The token to run the bot on.
         :param retriever: The random data retriever.
@@ -196,13 +196,10 @@ class AdvancedBot(object):
             self._bot_name, "frame", self._retriever
         ))
 
-        """
-        for command, text in custom_commands.items():
-            self._updater.dispatcher.add_handler(CommandHandler(
-                # Set custom callback.
-                command, lambda up, co, c=command, t=text: self._custom_callback(c, t, up, co)
+        for command, params in custom_commands.items():
+            self._updater.dispatcher.add_handler(make_command(
+                self._bot_name, command, self._retriever, **params
             ))
-        """
 
         # Build help message.
         self._help_message = f"*{self._bot_name}*\n"
@@ -213,9 +210,11 @@ class AdvancedBot(object):
 
         # Custom command list.
         self._help_message += f"\n*Custom Commands*\n"
-        for command, text in custom_commands.items():
-            self._help_message += f"\n/{command} : \"{text}\"\n"
+        for command, params in custom_commands.items():
+            description = params.get("description", default=None)
+            self._help_message += f"\n/{command}" + (f" : \"{description}\"\n" if description else "\n")
 
+        logging.info(f"\n{self._help_message}")
         logging.info(f"{self._bot_name} created.")
 
     def start(self):

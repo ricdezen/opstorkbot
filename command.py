@@ -1,9 +1,8 @@
 import os
 import logging
-import telegram
-import mimetypes
+from moviepy.video.fx import mask_color
 from telegram.ext import CommandHandler, CallbackContext
-from moviepy.editor import VideoFileClip
+from moviepy.editor import VideoFileClip, TextClip, ImageClip, CompositeVideoClip
 from telegram import Update
 from dataclasses import dataclass
 from PIL import Image
@@ -58,8 +57,9 @@ class _Command(object):
     retriever: Retriever
     text: str = None
     media_file: str = None
-    low_color_key: str = None
-    high_color_key: str = None
+    color_key: str = None
+    color_key_force: int = None
+    background_file: str = None
 
     def run(self, update: Update, context: CallbackContext):
         # Cache original parameters.
@@ -68,8 +68,9 @@ class _Command(object):
         retriever = self.retriever
         text = self.text
         media_file = self.media_file
-        low_color_key = self.low_color_key
-        high_color_key = self.high_color_key
+        color_key = self.color_key
+        color_key_force = self.color_key_force
+        background_file = self.background_file
 
         user = update.effective_chat.id
 
@@ -117,9 +118,42 @@ class _Command(object):
                 )
             logging.info(f"Sent image to user {user}.")
         elif media_type == "video":
-            # TODO videos bb.
-            logging.error(f"Yes, uhm. This is where I would generate the video. If my idiot creator implemented it.")
-            pass
+            # TODO move this to function.
+            clip = VideoFileClip(media_file)
+            clips = [clip]
+
+            # Only apply green screen if color is given and background file exists.
+            if color_key is not None and background_file is not None and os.path.exists(background_file):
+                # Add background image.
+                back_clip = ImageClip(background_file).set_position("center").set_duration(clip.duration)
+                # Apply chroma key
+                red, green, blue = bytes.fromhex(color_key)
+                # TODO custom thresholds.
+                chroma = clip.fx(mask_color.mask_color, color=(red, green, blue), thr=100, s=5)
+                chroma = chroma.set_position("center")
+                # Replace clip stack.
+                clips = [back_clip, chroma]
+
+            # TODO find appropriate text size.
+            # TODO fix color/outline or whatever.
+            text_clip = TextClip(text, fontsize=70, color="white")
+            text_clip = text_clip.set_position("center").set_duration(clip.duration)
+            clip = CompositeVideoClip(clips + [text_clip])
+
+            # Write to file.
+            result_file = utils.get_temp_file(".mp4")
+            clip.write_videofile(result_file)
+
+            # Close clips.
+            for c in clips:
+                c.close()
+            clip.close()
+
+            with open(result_file, 'rb') as f:
+                context.bot.send_video(
+                    chat_id=user, video=f, reply_to_message_id=update.message.message_id
+                )
+            logging.info(f"Sent video to user {user}.")
         else:
             update.message.reply_text("I'm having trouble with this command's media. My hands are tied.")
             logging.error(f"I can't detect the media type of this file: {media_file}. I don't know what to do with it!")
@@ -128,7 +162,8 @@ class _Command(object):
 
 def make_command(
         bot_name: str, command_name: str, retriever: Retriever, text: str = None, media_file: str = None,
-        low_color_key: str = None, high_color_key: str = None
+        color_key: str = None, color_key_force: int = None, background_file: str = None
 ) -> CommandHandler:
-    command = _Command(bot_name, command_name, retriever, text, media_file, low_color_key, high_color_key)
+    # TODO add some validation here.
+    command = _Command(bot_name, command_name, retriever, text, media_file, color_key, color_key_force, background_file)
     return CommandHandler(command_name, command.run)
