@@ -1,6 +1,6 @@
 import os
 import logging
-from moviepy.video.fx import mask_color
+from moviepy.video.fx import mask_color, resize
 from telegram.ext import CommandHandler, CallbackContext
 from moviepy.editor import VideoFileClip, TextClip, ImageClip, CompositeVideoClip
 from telegram import Update
@@ -78,7 +78,7 @@ class _Command(object):
         if text is None:
             # Try to get text from message body.
             text = update.message.text[len(update.message.text.split(' ')[0])::].lstrip()
-            text = text_utils.split_text(text, Bot.MAX_LINE_LENGTH)
+            logging.info(f"Got /{command_name} from {user} which contained \"{text}\".")
 
             # No body, check reply.
             if not text:
@@ -89,7 +89,6 @@ class _Command(object):
                     if text is None:
                         # Empty text -> either message was empty or the bot is set in privacy mode. Check BotFather.
                         logging.info(f"Sorry bruv, the message may be empty or my privacy mode might be enabled idk.")
-                    text = text_utils.split_text(text, Bot.MAX_LINE_LENGTH)
                     logging.info(f"Got /{command_name} from {user} which replied to \"{text}\".")
                 else:
                     # No text and message was not a reply. Bye bye.
@@ -106,7 +105,11 @@ class _Command(object):
 
         # Decide what to do based on file type.
         media_type = utils.media_type(media_file)
+
         if media_type == "image":
+            # On an image I have to split the text myself.
+            text = text_utils.split_text(text, Bot.MAX_LINE_LENGTH)
+
             # Write the text on the image and send it back.
             result_file = make_image(text, media_file, retriever)
             image_bytes = os.path.getsize(result_file)
@@ -134,11 +137,15 @@ class _Command(object):
                 # Replace clip stack.
                 clips = [back_clip, chroma]
 
-            # TODO find appropriate text size.
-            # TODO fix color/outline or whatever.
-            text_clip = TextClip(text, fontsize=70, color="white")
-            text_clip = text_clip.set_position("center").set_duration(clip.duration)
+            text_size = (int(clip.size[0] * 0.9), clip.size[1] // 5)
+            text_clip = TextClip(
+                text, method="caption", size=text_size, color="white",
+                stroke_width=1, stroke_color="black"
+            )
+            text_clip = text_clip.set_duration(clip.duration).set_position(("center", "bottom"))
             clip = CompositeVideoClip(clips + [text_clip])
+            # Resize.
+            clip = clip.fx(resize.resize, height=360)
 
             # Write to file.
             result_file = utils.get_temp_file(".mp4")
@@ -164,6 +171,6 @@ def make_command(
         bot_name: str, command_name: str, retriever: Retriever, text: str = None, media_file: str = None,
         color_key: str = None, color_key_force: int = None, background_file: str = None
 ) -> CommandHandler:
-    # TODO add some validation here.
+    # TODO add some validation here?
     command = _Command(bot_name, command_name, retriever, text, media_file, color_key, color_key_force, background_file)
     return CommandHandler(command_name, command.run)
