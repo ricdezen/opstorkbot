@@ -55,6 +55,7 @@ class _Command(object):
     bot_name: str
     command_name: str
     retriever: Retriever
+    description: str = None
     text: str = None
     media_file: str = None
     color_key: str = None
@@ -123,12 +124,14 @@ class _Command(object):
         elif media_type == "video":
             # TODO move this to function.
             clip = VideoFileClip(media_file)
+            clip = clip.fx(resize.resize, height=360)
             clips = [clip]
 
             # Only apply green screen if color is given and background file exists.
             if color_key is not None and background_file is not None and os.path.exists(background_file):
                 # Add background image.
                 back_clip = ImageClip(background_file).set_position("center").set_duration(clip.duration)
+                back_clip = back_clip.fx(resize.resize, height=360)
                 # Apply chroma key
                 red, green, blue = bytes.fromhex(color_key)
                 # TODO custom thresholds.
@@ -145,7 +148,6 @@ class _Command(object):
             text_clip = text_clip.set_duration(clip.duration).set_position(("center", "bottom"))
             clip = CompositeVideoClip(clips + [text_clip])
             # Resize.
-            clip = clip.fx(resize.resize, height=360)
 
             # Write to file.
             result_file = utils.get_temp_file(".mp4")
@@ -167,10 +169,7 @@ class _Command(object):
             logging.error(f"Could not send media back to user {user}.")
 
 
-def make_command(
-        bot_name: str, command_name: str, retriever: Retriever, text: str = None, media_file: str = None,
-        color_key: str = None, color_key_force: int = None, background_file: str = None
-) -> CommandHandler:
+def make_command(bot_name: str, command_name: str, retriever: Retriever, **kwargs) -> CommandHandler:
     # TODO add some validation here?
-    command = _Command(bot_name, command_name, retriever, text, media_file, color_key, color_key_force, background_file)
+    command = _Command(bot_name, command_name, retriever, **kwargs)
     return CommandHandler(command_name, command.run)

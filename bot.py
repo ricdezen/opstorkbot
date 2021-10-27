@@ -210,9 +210,11 @@ class AdvancedBot(object):
 
         # Custom command list.
         self._help_message += f"\n*Custom Commands*\n"
-        for command, params in custom_commands.items():
+        commands_sorted = sorted(custom_commands.keys())
+        for command in commands_sorted:
+            params = custom_commands[command]
             description = params.get("description", None)
-            self._help_message += f"\n/{command}" + (f" : \"{description}\"\n" if description else "\n")
+            self._help_message += f"\n/{command}" + (f": {description}\n" if description else "\n")
 
         logging.info(f"\n{self._help_message}")
         logging.info(f"{self._bot_name} created.")
