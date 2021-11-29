@@ -1,5 +1,7 @@
 # StorkBot
 
+> **WARNING**: Docs for the `develop` branch are not up to date.
+
 Telegram bot made for fun for me and my friends. Allows framing a message or phrase onto a stock photo, taken
 from [Unsplash](https://unsplash.com/) and using some random font from [Google Fonts](https://fonts.google.com/).
 
@@ -40,12 +42,12 @@ You will need a configuration file `config.json` in your working directory:
   "unsplash_api_key": "your Unsplash access token, see: https://unsplash.com/documentation#creating-a-developer-account",
   "custom_commands": {
     "Joke 1": "Your group's inside joke that you don't want to type out every time.",
-    "Use a single word as key, it becomes a bot command!": "Dun dun dun, another one bites the dust."
+    "Use-no-spaces-in-the-key!-Cause-it-becomes-a-bot-command!": "Dun dun dun, another one bites the dust."
   }
 }
 ```
 
-Custom commands are basically a static reply. When the command that is set as key is fired, the bot answers with a photo
-containing the value.
+Custom commands are basically a static reply. When the bot receives the command's name, it answers with a random
+photo and font containing the text.
 
 That's it, you should be good to go.
